@@ -9,6 +9,14 @@ def client():
     return test_client
 
 
+def test_existing_user_account(client):
+    response = client.get("/user_1/account")
+    result = response.data.decode().split(' ')
+    assert response.status_code == 200
+    assert int(result[4]) == 100  # balance
+    assert int(result[10]) == 0   # overdraft
+
+
 def test_non_existing_user_account(client):
     response = client.get("/user_6/account")
     assert response.status_code == 200
@@ -17,8 +25,9 @@ def test_non_existing_user_account(client):
 
 def test_balance_of_existing_user(client):
     response = client.get("/user_1/account/balance")
+    result = response.data.decode().split(' ')
     assert response.status_code == 200
-    assert int(response.data.decode()) == 100  # balance
+    assert int(result[4]) == 100  # balance
 
 
 def test_balance_of_non_existing_user(client):
@@ -28,42 +37,46 @@ def test_balance_of_non_existing_user(client):
 
 
 def test_deposit_operation(client):
-    response = client.post('/user_1/account/balance', data=json.dumps({'operation': 'deposit', 'amount': 200}),
+    response = client.put('/user_1/account/balance', data=json.dumps({'operation': 'deposit', 'amount': 200}),
                            content_type='application/json')
+    result = response.data.decode().split(' ')
     assert response.status_code == 200
-    assert int(response.data.decode()) == 300  # balance
+    assert int(result[2]) == 200  # deposit amount
+    assert int(result[7]) == 300  # balance
 
 
 def test_insufficient_deposit_operation(client):
-    response = client.post('/user_1/account/balance', data=json.dumps({'operation': 'deposit', 'amount': 0}),
+    response = client.put('/user_1/account/balance', data=json.dumps({'operation': 'deposit', 'amount': 0}),
                            content_type='application/json')
     assert response.status_code == 200
     assert response.data.decode() == 'Invalid deposit amount. Amount should be > 0'
 
 
 def test_withdrawal_operation(client):
-    response = client.post('/user_1/account/balance', data=json.dumps({'operation': 'withdrawal', 'amount': 30}),
+    response = client.put('/user_1/account/balance', data=json.dumps({'operation': 'withdrawal', 'amount': 30}),
                            content_type='application/json')
+    result = response.data.decode().split(' ')
     assert response.status_code == 200
-    assert int(response.data.decode()) == 70  # balance
+    assert int(result[2]) == 30  # withdrawal amount
+    assert int(result[7]) == 70  # balance
 
 
 def test_withdrawal_operation_beyond_balance(client):
-    response = client.post('/user_1/account/balance', data=json.dumps({'operation': 'withdrawal', 'amount': 200}),
+    response = client.put('/user_1/account/balance', data=json.dumps({'operation': 'withdrawal', 'amount': 200}),
                            content_type='application/json')
     assert response.status_code == 200
     assert response.dataresponse.data.decode() == 'Can\'t withdraw beyond the current account balance.'
 
 
 def test_withdrawal_operation_beyond_overdraft(client):
-    response = client.post('/user_1/account/balance', data=json.dumps({'operation': 'withdrawal', 'amount': -50}),
+    response = client.put('/user_1/account/balance', data=json.dumps({'operation': 'withdrawal', 'amount': -50}),
                            content_type='application/json')
     assert response.status_code == 200
     assert response.data.decode() == 'Invalid withdraw amount.'
 
 
 def test_insufficient_withdrawal_operation(client):
-    response = client.post('/user_2/account/balance', data=json.dumps({'operation': 'withdrawal', 'amount': 100}),
+    response = client.put('/user_2/account/balance', data=json.dumps({'operation': 'withdrawal', 'amount': 100}),
                           content_type='application/json')
     assert response.status_code == 200
     assert response.data.decode() == 'You went below the overdraft limit.'
@@ -71,15 +84,17 @@ def test_insufficient_withdrawal_operation(client):
 
 def test_user_account_overdraft(client):
     response = client.get('/user_3/account/overdraft')
+    result = response.data.decode().split(' ')
     assert response.status_code == 200
-    assert int(response.data.decode()) == 100
+    assert int(result[6]) == 100
 
 
 def test_overdraft_set_up(client):
     response = client.post('/user_3/account/overdraft', data=json.dumps({'amount': 50}),
                            content_type='application/json')
+    result = response.data.decode().split(' ')
     assert response.status_code == 200
-    assert int(response.data.decode()) == 50
+    assert int(result[5]) == 50
 
 
 def test_overdraft_canceling(client):
